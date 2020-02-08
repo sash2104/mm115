@@ -62,9 +62,11 @@ inline int xy2id(int x, int y) { return (y<<7)+x; }
 int matrix[N_MAX*N_MAX]; // (x,y)が繋がっている -> matrix[xy2id(x,y)] = 1, そうでなければ0
 
 struct Solver {
-  int N, C, K, E;
+  int N;
+  double C;
+  int K, E;
+  edges_t edges;
   void read() {
-    edges_t edges;
     cin >> N >> C >> K >> E;
     for (int i=0; i<E; i++)
     {
@@ -72,11 +74,17 @@ struct Solver {
       cin >> from >> to >> distance;
       edges.emplace_back(from, to, distance);
     }
-  }
-  void solve() { 
     for (int y=0; y<N; y++) {
       for (int x=0; x<N; x++) {
-        matrix[xy2id(x,y)] = 1;
+      }
+    }
+  }
+  void solve() { 
+    // UnionFind uf(N);
+    for (auto &e: edges) { 
+      if (e.cost == 1) { 
+        matrix[xy2id(e.from,e.to)] = 1;
+        matrix[xy2id(e.to,e.from)] = 1;
       }
     }
   }
