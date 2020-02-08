@@ -1,5 +1,4 @@
 ```
-javac PolyominoCoveringVis.java
 ```
 
 # setup
@@ -14,5 +13,8 @@ err.println(N);
 
 ## テストケース生成
 ```
+javac <problem>Vis.java
 ./generate.sh <problem>
 ```
+
+- .inと.outの二つからスコア計算できない場合は<problem>Vis.javaを頑張って書き換えて.ansを生成する
