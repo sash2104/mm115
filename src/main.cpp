@@ -6,48 +6,95 @@
 #include <sstream>
 #include <vector>
 #include <set>
-#include <string>
 
 using namespace std;
 
-class GraphReconstruction {
+const int N_MAX = 128;
+
+template< typename T >
+struct Edge {
+  int from, to;
+  T cost;
+  Edge() {}
+  Edge(int f, int t) : from(f), to(t), cost(1) {}
+  Edge(int f, int t, T c) : from(f), to(t), cost(c) {}
+  friend bool operator < (const Edge& lhs, const Edge& rhs) { return lhs.cost < rhs.cost; };
+  friend bool operator > (const Edge& lhs, const Edge& rhs) { return rhs < lhs; };
+  friend bool operator <= (const Edge& lhs, const Edge& rhs) { return !(lhs > rhs); };
+  friend bool operator >= (const Edge& lhs, const Edge& rhs) { return !(lhs < rhs); };
+};
+
+template< typename T >
+using Edges = std::vector< Edge< T > >;
+template< typename T >
+using Graph = std::vector< Edges< T > >;
+using edges_t = Edges<int>;
+
+class UnionFind {
 public:
-  vector<string> findSolution(int N, double C, int K, vector<string> paths)
-  {           
-    vector<string> out;
+  std::vector<int> data; // sizeとparを同時に管理する
+  UnionFind(int size) : data(size, -1) {}
 
-    for (int i=0; i<N; i++)
-    {
-      string row;
-      for (int k=0; k<N; k++) row+="1";
-      out.push_back(row);
+  int find(int x) {
+    return data[x] < 0 ? x : data[x] = find(data[x]);
+  }
+
+  void unite(int x, int y) {
+    int px = find(x);
+    int py = find(y);
+    if (px != py) {
+      if (data[py] < data[px]) std::swap(px, py);
+      data[px] += data[py]; data[py] = px;
     }
+  }
 
-    return out;
+  bool same(int x, int y) {
+    return find(x) == find(y);
+  }
+
+  int size(int x) {
+    return -data[find(x)];
+  }
+};
+
+
+inline int xy2id(int x, int y) { return (y<<7)+x; }
+int matrix[N_MAX*N_MAX]; // (x,y)が繋がっている -> matrix[xy2id(x,y)] = 1, そうでなければ0
+
+struct Solver {
+  int N, C, K, E;
+  void read() {
+    edges_t edges;
+    cin >> N >> C >> K >> E;
+    for (int i=0; i<E; i++)
+    {
+      int from, to, distance;
+      cin >> from >> to >> distance;
+      edges.emplace_back(from, to, distance);
+    }
+  }
+  void solve() { 
+    for (int y=0; y<N; y++) {
+      for (int x=0; x<N; x++) {
+        matrix[xy2id(x,y)] = 1;
+      }
+    }
+  }
+  void write() {
+    cout << N << endl;
+    for (int y=0; y<N; y++) {
+      for (int x=0; x<N; x++) {
+        cout << matrix[xy2id(x,y)];
+      }
+      cout << endl;
+    }
+    cout.flush();
   }
 };
 
 int main() {
-  GraphReconstruction prog;
-  int N;
-  double C;
-  int K;
-  int NumPaths;
-  vector<string> paths;
-  string path;
-  cin >> N;
-  cin >> C;
-  cin >> K;
-  cin >> NumPaths;
-  for (int i=0; i<NumPaths; i++)
-  {
-    getline(std::cin, path);
-    paths.push_back(path);
-  }
-  
-  vector<string> ret = prog.findSolution(N,C,K,paths);
-  cout << ret.size() << endl;
-  for (int i = 0; i < (int)ret.size(); ++i)
-      cout << ret[i] << endl;
-  cout.flush();
+  Solver solver;
+  solver.read();
+  solver.solve();
+  solver.write();
 }
