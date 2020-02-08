@@ -4,5 +4,5 @@ set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_FLAGS "-O3")
 
-set(target "run")
+set(target "check")
 add_executable(${target} main.cpp)
