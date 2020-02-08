@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.13)
-project(marathon)
+project(GraphReconstruction)
 set(root_dir ${PROJECT_SOURCE_DIR})
 
 add_subdirectory(src)
@@ -12,4 +12,10 @@ set(run ${CMAKE_CURRENT_BINARY_DIR}/src/run)
 set(check ${CMAKE_CURRENT_BINARY_DIR}/checker/check)
 set(in_dir ${root_dir}/data)
 set(out_dir ${root_dir}/result/${sha})
+set(submit_file ${project}.cpp)
 add_custom_target(example-test ${root_dir}/scripts/run.sh ${run} ${in_dir} ${out_dir} ${check})
+add_custom_target(submit cp ${root_dir}/src/main.cpp ${submit_file}
+  COMMAND zip submit.zip ${submit_file}
+  COMMAND mv submit.zip ${out_dir}
+  COMMAND ls ${out_dir}/submit.zip
+)
