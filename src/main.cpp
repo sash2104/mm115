@@ -166,6 +166,11 @@ struct Solver {
         }
       }
     }
+
+    // 貪欲に辺を拡張する
+    expand_edges();
+
+    // 繋がっている点集合に分け、点集合が小さかったら総当たりで辺をつないでみる
     map<int, vector<int>> tmp_vmap; // 繋がっている点同士の集合
     for (int i = 0; i < N; ++i) {
       tmp_vmap[uf.find(i)].push_back(i);
@@ -180,6 +185,42 @@ struct Solver {
     }
   }
 
+  void expand_edges() {
+    // (a,b)=d1、(b,c)=null、(a,c)=d1+1のときに(b,c)をつなぐ
+    for (int i = 0; i < 5; ++i) {
+      for (auto &e : edges) {
+        if (e.cost <= 1) continue;
+        bool need_expand = true;
+        for (int v = 0; v < N; ++v) { 
+          if (v == e.from || v == e.to) continue;
+          int id1 = xy2id(e.from, v);
+          int id2 = xy2id(v, e.to);
+          if (dpred[id1] == NG || dpred[id2] == NG) continue;
+          if (dgold[id1]+dgold[id2] == e.cost) {
+            need_expand = false;
+            break;
+          }
+        }
+        if (!need_expand) continue;
+        for (int v = 0; v < N; ++v) { 
+          if (v == e.from || v == e.to) continue;
+          int id1 = xy2id(e.from, v);
+          int id2 = xy2id(v, e.to);
+          if (dpred[id1] == NG || dpred[id2] == NG) continue;
+          if (dgold[id1] == e.cost-1 && dgold[id2] == INF) {
+            dgold[id2] = 1;
+            matrix[id2] = 1;
+            break;
+          }
+          if (dgold[id2] == e.cost-1 && dgold[id1] == INF) {
+            dgold[id1] = 1;
+            matrix[id1] = 1;
+            break;
+          }
+        }
+      }
+    }
+  }
   int bfs(const vector<int>& lv, const vector<int>& connected, const vector<int>& choosed) { 
     set<int> connect;
     for (int id: connected) connect.insert(id);
