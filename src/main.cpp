@@ -167,9 +167,6 @@ struct Solver {
       }
     }
 
-    // 貪欲に辺を拡張する
-    expand_edges();
-
     // 繋がっている点集合に分け、点集合が小さかったら総当たりで辺をつないでみる
     map<int, vector<int>> tmp_vmap; // 繋がっている点同士の集合
     for (int i = 0; i < N; ++i) {
@@ -183,6 +180,9 @@ struct Solver {
     for (auto &lv : vertices) {
       bruteforce(lv);
     }
+
+    // 貪欲に辺を拡張する
+    expand_edges();
   }
 
   void expand_edges() {
@@ -206,21 +206,31 @@ struct Solver {
           if (v == e.from || v == e.to) continue;
           int id1 = xy2id(e.from, v);
           int id2 = xy2id(v, e.to);
+          if (done[id1] && done[id2]) continue;
           if (dpred[id1] == NG || dpred[id2] == NG) continue;
           if (dgold[id1] == e.cost-1 && dgold[id2] == INF) {
             dgold[id2] = 1;
+            dgold[revid(id2)] = 1;
             matrix[id2] = 1;
+            matrix[revid(id2)] = 1;
+            done[id2] = true;
+            done[revid(id2)] = true;
             break;
           }
           if (dgold[id2] == e.cost-1 && dgold[id1] == INF) {
             dgold[id1] = 1;
+            dgold[revid(id1)] = 1;
             matrix[id1] = 1;
+            matrix[revid(id1)] = 1;
+            done[id1] = true;
+            done[revid(id1)] = true;
             break;
           }
         }
       }
     }
   }
+
   int bfs(const vector<int>& lv, const vector<int>& connected, const vector<int>& choosed) { 
     set<int> connect;
     for (int id: connected) connect.insert(id);
@@ -258,7 +268,6 @@ struct Solver {
 
   void bruteforce(const vector<int>& lv) {
     // 繋がっている点同士の集合の全ての辺の組み合わせを試し、実際の距離との差がもっとも小さい候補を選ぶ
-    if (lv.size() >= 8) return; // 点の集合が多い場合は一旦は無視する
     vector<int> free_ids;
     vector<int> connected_ids;
     for (int v1 : lv) {
@@ -271,32 +280,38 @@ struct Solver {
       }
     }
     int n = free_ids.size();
-    int best_dist = N_MAX*N_MAX; // 繋げた時の正解との距離の差
-    vector<int> best;
-    for (int mask = 0; mask < (1<<n); ++mask) { 
-      if (best_dist == 0) {
-        int cnt = __builtin_popcount(mask);
-        if (cnt > best.size()) continue;
-      }
-      vector<int> ids;
-      for (int i = 0; i < n; ++i) { 
-        if (mask & (1<<i)) {
-          ids.push_back(free_ids[i]);
-          ids.push_back(revid(free_ids[i]));
+    if (lv.size() <= 7) {
+      int best_dist = N_MAX*N_MAX; // 繋げた時の正解との距離の差
+      vector<int> best;
+      for (int mask = 0; mask < (1<<n); ++mask) { 
+        if (best_dist == 0) {
+          int cnt = __builtin_popcount(mask);
+          if (cnt > best.size()) continue;
+        }
+        vector<int> ids;
+        for (int i = 0; i < n; ++i) { 
+          if (mask & (1<<i)) {
+            ids.push_back(free_ids[i]);
+            ids.push_back(revid(free_ids[i]));
+          }
+        }
+        assert(2*__builtin_popcount(mask) == (int)ids.size()); // 辺の数が立ってるフラグの数と一致する
+        int ret = bfs(lv, connected_ids, ids);
+        if (best_dist > ret || (best_dist == ret && best.size() > ids.size())) {
+          best_dist = ret;
+          best = ids;
+          // cerr << mask << " " << best_dist << " " << best.size() << endl;
         }
       }
-      assert(2*__builtin_popcount(mask) == (int)ids.size()); // 辺の数が立ってるフラグの数と一致する
-      int ret = bfs(lv, connected_ids, ids);
-      if (best_dist > ret || (best_dist == ret && best.size() > ids.size())) {
-        best_dist = ret;
-        best = ids;
-        // cerr << mask << " " << best_dist << " " << best.size() << endl;
+      for (int id : best) { 
+        matrix[id] = 1;
       }
+      // cerr << best_dist << " " << best.size() << endl;
     }
-    for (int id : best) { 
-      matrix[id] = 1;
+    else { 
+      // lv.size() >= 8
+
     }
-    // cerr << best_dist << " " << best.size() << endl;
   }
 
   void write() {
