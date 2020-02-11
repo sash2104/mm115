@@ -119,7 +119,7 @@ struct Solver {
   edges_t edges;
   graph_t graph;
   vector<vector<int>> vertices; // 繋がっている点同士の集合
-  Timer timer = Timer(4);
+  Timer timer = Timer(5);
   void read() {
     n_given = 0;
     cin >> N >> C >> K >> E;
@@ -278,7 +278,6 @@ struct Solver {
   }
 
   int bfs(const vector<int>& lv, const vector<int>& connected, const vector<int>& choosed) { 
-    set<int> connect;
     vector<vector<int>> g(lv.size());
     unordered_map<int, int> rid;
     for (int i = 0; i < lv.size(); ++i) {
@@ -310,6 +309,7 @@ struct Solver {
           int id = xy2id(lv[v1], lv[v2]);
           visit[v2] = true;
           dist[v][v2] = dist[v][v1]+1;
+          // if (dgold[id] != INF && dist[v][v2] < dgold[id]) return -1;
           q.push(v2);
         }
       }
@@ -321,15 +321,19 @@ struct Solver {
       for (int v2 = 0; v2 < lv.size(); ++v2) {
         if (v == v2) continue;
         int id = xy2id(lv[v], lv[v2]);
-        if (dgold[id] == INF || dist[v][v2] == INF) {
+        if (dist[v][v2] == INF || dgold[id] == NG) {
+          continue;
+        }
+        if (dgold[id] == INF) {
+          if (dist[v][v2] < INF) --ret; // 未確定の部分を確定しない辺を優先したい
           continue;
         }
         if (dist[v][v2] < dgold[id]) {
           // cerr << v << " " << v2 << " " << dist[v][v2] << " " << dgold[id] << endl;
-          return -1;
+          return -10000;
         }
         if (dist[v][v2] == dgold[id]) {
-          ret += 1;
+          ret += 100;
         }
       }
     }
@@ -385,6 +389,7 @@ struct Solver {
       int cnt = 0;
       while (true) {
         double t = timer.get();
+        // cerr << t << endl;
         if (t > timer.LIMIT) break;
         int best_i = -1;
         int tmp_best = best_dist;
@@ -399,7 +404,7 @@ struct Solver {
             best_dist = ret;
             local_best = ids;
             best_i = i;
-            // cerr << mask << " " << best_dist << " " << best.size() << endl;
+            // cerr << best_dist << endl;
           }
         }
 
