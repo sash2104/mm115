@@ -69,6 +69,7 @@ using Edges = std::vector< Edge< T > >;
 template< typename T >
 using Graph = std::vector< Edges< T > >;
 using edges_t = Edges<int>;
+using graph_t = vector<edges_t>;
 
 class UnionFind {
 public:
@@ -114,16 +115,20 @@ struct Solver {
   double C;
   int K, E;
   edges_t edges;
+  graph_t graph;
   vector<vector<int>> vertices; // 繋がっている点同士の集合
   Timer timer = Timer(3);
   void read() {
     cin >> N >> C >> K >> E;
+    graph.resize(N);
     logger::json("N",N,"C",C,"K",K,"E",E);
     for (int i=0; i<E; i++)
     {
       int from, to, distance;
       cin >> from >> to >> distance;
       edges.emplace_back(from, to, distance);
+      graph[from].emplace_back(from, to, distance);
+      graph[to].emplace_back(to, from, distance);
     }
 
     // 初期化処理
@@ -228,6 +233,7 @@ struct Solver {
           int id2 = xy2id(v, e.to);
           if (done[id1] && done[id2]) continue;
           if (dpred[id1] == NG || dpred[id2] == NG) continue;
+          if (dpred[id1] == INF) swap(id1, id2);
           if (dpred[id1] == e.cost-1 && dpred[id2] == INF) {
             dpred[id2] = 1;
             dpred[revid(id2)] = 1;
@@ -237,17 +243,6 @@ struct Solver {
             done[revid(id2)] = true;
             // cerr << e.from << " " << v << " " << e.to << " " << e.cost << " " << dpred[id1] << " " << dpred[id2] << endl;
             expanded = true;
-            break;
-          }
-          if (dpred[id2] == e.cost-1 && dpred[id1] == INF) {
-            dpred[id1] = 1;
-            dpred[revid(id1)] = 1;
-            matrix[id1] = 1;
-            matrix[revid(id1)] = 1;
-            done[id1] = true;
-            done[revid(id1)] = true;
-            expanded = true;
-            // cerr << e.from << " " << v << " " << e.to << " " << e.cost << " " << dpred[id1] << " " << dpred[id2] << endl;
             break;
           }
         }
