@@ -21,13 +21,12 @@ do
   filebase=$(basename ${file%.*}) # 現状はiと同じになる
   outfile=$outdir/${filebase}.out
   errfile=$outdir/${filebase}.err
-  echo "$run < $file > $outfile 2> $errfile" >&2
-  $run < $file > $outfile 2> $errfile
-  head $errfile
-  tail $errfile
+  echo "$run < $file > $outfile 2> $errfile"
+  time $run < $file > $outfile 2> >(tee $errfile >&2)
+  # tail $errfile
   if [[ $# -eq 4 ]]; then
     ansfile=$indir/$i.ans
-    $checker $file $outfile $ansfile >> $result
+    $checker $file $outfile $ansfile | sed "s/{/{\"seed\":\"$i\",/" >> $result
   fi
 done
 cat $result
