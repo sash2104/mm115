@@ -115,7 +115,7 @@ struct Solver {
   int K, E;
   edges_t edges;
   vector<vector<int>> vertices; // 繋がっている点同士の集合
-  Timer timer = Timer(5);
+  Timer timer = Timer(3);
   void read() {
     cin >> N >> C >> K >> E;
     logger::json("N",N,"C",C,"K",K,"E",E);
@@ -147,19 +147,17 @@ struct Solver {
     for (auto &e: edges) { 
       int id1 = xy2id(e.from,e.to);
       int id2 = xy2id(e.to,e.from);
+      dpred[id1] = e.cost;
+      dpred[id2] = e.cost;
       if (e.cost == 1) { 
         // cost = 1はつながっているとして確定させる
-        dpred[id1] = 1;
-        dpred[id2] = 1;
         matrix[id1] = 1;
         matrix[id2] = 1;
         done[id1] = true;
         done[id2] = true;
       }
-      else { 
+      else {
         // それ以外のcostはつながっていないとして確定させる
-        dpred[id1] = NG;
-        dpred[id2] = NG;
         matrix[id1] = 0;
         matrix[id2] = 0;
         done[id1] = true;
@@ -201,21 +199,24 @@ struct Solver {
     }
 
     // 貪欲に辺を拡張する
-    // expand_edges();
+    expand_edges();
   }
 
   void expand_edges() {
     // (a,b)=d1、(b,c)=null、(a,c)=d1+1のときに(b,c)をつなぐ
     for (int i = 0; i < 5; ++i) {
+      bool expanded = false;
       for (auto &e : edges) {
+        if (expanded) break;
         if (e.cost <= 1) continue;
+        // cerr << e.from << " " << e.to << " " << e.cost << endl;
         bool need_expand = true;
         for (int v = 0; v < N; ++v) { 
           if (v == e.from || v == e.to) continue;
           int id1 = xy2id(e.from, v);
           int id2 = xy2id(v, e.to);
           if (dpred[id1] == NG || dpred[id2] == NG) continue;
-          if (dgold[id1]+dgold[id2] == e.cost) {
+          if (dpred[id1]+dpred[id2] == e.cost) {
             need_expand = false;
             break;
           }
@@ -227,22 +228,26 @@ struct Solver {
           int id2 = xy2id(v, e.to);
           if (done[id1] && done[id2]) continue;
           if (dpred[id1] == NG || dpred[id2] == NG) continue;
-          if (dgold[id1] == e.cost-1 && dgold[id2] == INF) {
-            dgold[id2] = 1;
-            dgold[revid(id2)] = 1;
+          if (dpred[id1] == e.cost-1 && dpred[id2] == INF) {
+            dpred[id2] = 1;
+            dpred[revid(id2)] = 1;
             matrix[id2] = 1;
             matrix[revid(id2)] = 1;
             done[id2] = true;
             done[revid(id2)] = true;
+            // cerr << e.from << " " << v << " " << e.to << " " << e.cost << " " << dpred[id1] << " " << dpred[id2] << endl;
+            expanded = true;
             break;
           }
-          if (dgold[id2] == e.cost-1 && dgold[id1] == INF) {
-            dgold[id1] = 1;
-            dgold[revid(id1)] = 1;
+          if (dpred[id2] == e.cost-1 && dpred[id1] == INF) {
+            dpred[id1] = 1;
+            dpred[revid(id1)] = 1;
             matrix[id1] = 1;
             matrix[revid(id1)] = 1;
             done[id1] = true;
             done[revid(id1)] = true;
+            expanded = true;
+            // cerr << e.from << " " << v << " " << e.to << " " << e.cost << " " << dpred[id1] << " " << dpred[id2] << endl;
             break;
           }
         }
