@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <iostream>
 #include <map>
+#include <unordered_map>
 #include <queue>
 #include <set>
 #include <sstream>
@@ -278,8 +279,23 @@ struct Solver {
 
   int bfs(const vector<int>& lv, const vector<int>& connected, const vector<int>& choosed) { 
     set<int> connect;
-    for (int id: connected) connect.insert(id);
-    for (int id: choosed) connect.insert(id);
+    vector<vector<int>> g(lv.size());
+    unordered_map<int, int> rid;
+    for (int i = 0; i < lv.size(); ++i) {
+      rid[lv[i]] = i;
+    }
+    for (int id: connected) {
+      int v1 = rid[id2x(id)];
+      int v2 = rid[id2y(id)];
+      g[v1].push_back(v2);
+      g[v2].push_back(v1);
+    }
+    for (int id: choosed) {
+      int v1 = rid[id2x(id)];
+      int v2 = rid[id2y(id)];
+      g[v1].push_back(v2);
+      g[v2].push_back(v1);
+    }
     vector<vector<int>> dist(lv.size(), vector<int>(lv.size(), INF));
     for (int v = 0; v < lv.size(); ++v) {
       dist[v][v] = 0;
@@ -289,10 +305,9 @@ struct Solver {
       visit[v] = true;
       while (!q.empty()) { 
         int v1 = q.front(); q.pop();
-        for (int v2 = 0; v2 < lv.size(); ++v2) {
+        for (int v2 : g[v1]) {
           if (visit[v2]) continue;
           int id = xy2id(lv[v1], lv[v2]);
-          if (connect.find(id) == connect.end()) continue;
           visit[v2] = true;
           dist[v][v2] = dist[v][v1]+1;
           q.push(v2);
