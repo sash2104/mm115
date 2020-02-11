@@ -1,6 +1,7 @@
 // C++11
 #include <cassert>
 #include <cstdlib>
+#include <sys/time.h>
 #include <algorithm>
 #include <iostream>
 #include <map>
@@ -12,6 +13,22 @@
 using namespace std;
 
 const int N_MAX = 128;
+
+struct Timer {
+  static constexpr int64_t CYCLES_PER_SEC = 2800000000;
+  const double LIMIT; // FIXME: 時間制限(s)
+  int64_t start;
+  Timer() : LIMIT(0.95) { reset(); }
+  Timer(double limit) : LIMIT(limit) { reset(); }
+  void reset() { start = getCycle(); }
+  void plus(double a) { start -= (a * CYCLES_PER_SEC); }
+  inline double get() { return (double)(getCycle() - start) / CYCLES_PER_SEC; }
+  inline int64_t getCycle() {
+    uint32_t low, high;
+    __asm__ volatile ("rdtsc" : "=a" (low), "=d" (high));
+    return ((int64_t)low) | ((int64_t)high << 32);
+  }
+};
 
 namespace logger {
 inline void json_() {}
@@ -98,8 +115,10 @@ struct Solver {
   int K, E;
   edges_t edges;
   vector<vector<int>> vertices; // 繋がっている点同士の集合
+  Timer timer = Timer(5);
   void read() {
     cin >> N >> C >> K >> E;
+    logger::json("N",N,"C",C,"K",K,"E",E);
     for (int i=0; i<E; i++)
     {
       int from, to, distance;
@@ -182,7 +201,7 @@ struct Solver {
     }
 
     // 貪欲に辺を拡張する
-    expand_edges();
+    // expand_edges();
   }
 
   void expand_edges() {
@@ -235,8 +254,9 @@ struct Solver {
     set<int> connect;
     for (int id: connected) connect.insert(id);
     for (int id: choosed) connect.insert(id);
-    vector<vector<int>> dist(lv.size(), vector<int>(lv.size(), 0));
+    vector<vector<int>> dist(lv.size(), vector<int>(lv.size(), INF));
     for (int v = 0; v < lv.size(); ++v) {
+      dist[v][v] = 0;
       queue<int> q;
       q.push(v);
       vector<bool> visit(lv.size(), false);
@@ -258,9 +278,18 @@ struct Solver {
     int ret = 0;
     for (int v = 0; v < lv.size(); ++v) {
       for (int v2 = 0; v2 < lv.size(); ++v2) {
+        if (v == v2) continue;
         int id = xy2id(lv[v], lv[v2]);
-        if (dgold[id] == INF) continue;
-        ret += abs(dgold[id]-dist[v][v2]);
+        if (dgold[id] == INF) {
+          continue;
+        }
+        if (dist[v][v2] < dgold[id]) {
+          // cerr << v << " " << v2 << " " << dist[v][v2] << " " << dgold[id] << endl;
+          return -1;
+        }
+        if (dist[v][v2] == dgold[id]) {
+          ret += 1;
+        }
       }
     }
     return ret;
@@ -280,9 +309,10 @@ struct Solver {
       }
     }
     int n = free_ids.size();
+    // int best_dist = N_MAX*N_MAX; // 繋げた時の正解との距離の差
+    int best_dist = bfs(lv, connected_ids, {}); // 繋げた時の正解との距離の差
+    vector<int> best;
     if (lv.size() <= 7) {
-      int best_dist = N_MAX*N_MAX; // 繋げた時の正解との距離の差
-      vector<int> best;
       for (int mask = 0; mask < (1<<n); ++mask) { 
         if (best_dist == 0) {
           int cnt = __builtin_popcount(mask);
@@ -297,20 +327,56 @@ struct Solver {
         }
         assert(2*__builtin_popcount(mask) == (int)ids.size()); // 辺の数が立ってるフラグの数と一致する
         int ret = bfs(lv, connected_ids, ids);
-        if (best_dist > ret || (best_dist == ret && best.size() > ids.size())) {
+        if (best_dist < ret || (best_dist == ret && best.size() > ids.size())) {
           best_dist = ret;
           best = ids;
           // cerr << mask << " " << best_dist << " " << best.size() << endl;
         }
       }
-      for (int id : best) { 
-        matrix[id] = 1;
-      }
       // cerr << best_dist << " " << best.size() << endl;
     }
     else { 
       // lv.size() >= 8
+      if (K < 3) return;
+      vector<bool> used(n, false);
+      vector<int> best2;
+      int cnt = 0;
+      while (true) {
+        double t = timer.get();
+        if (t > timer.LIMIT) break;
+        int best_i = -1;
+        int tmp_best = best_dist;
+        vector<int> local_best;
+        for (int i = 0; i < n; ++i) { 
+          if (used[i]) continue;
+          vector<int> ids;
+          ids.push_back(free_ids[i]);
+          ids.push_back(revid(free_ids[i]));
+          int ret = bfs(lv, connected_ids, ids);
+          if (best_dist < ret) {
+            best_dist = ret;
+            local_best = ids;
+            best_i = i;
+            // cerr << mask << " " << best_dist << " " << best.size() << endl;
+          }
+        }
 
+        if (tmp_best == best_dist) break;
+        if (local_best.size() > 0) {
+          used[best_i] = true;
+          for (int id: local_best) {
+            connected_ids.push_back(id);
+            best2.push_back(id);
+            // best.push_back(id);
+          }
+        }
+      }
+      for (int id : best2) {
+        best.push_back(id);
+      }
+    }
+    for (int id : best) { 
+      matrix[id] = 1;
     }
   }
 
