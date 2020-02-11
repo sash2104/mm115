@@ -1,12 +1,16 @@
 #!/bin/bash
 
 run=$1
-indir=$2
+rootdir=$2
+indir=$rootdir/data
 outdir=$3
 checker="dummy"
 if [[ $# -eq 4 ]]; then
   checker=$4
 fi
+logger=$rootdir/scripts/logger.py
+visualizer=$rootdir/scripts/visualizer.py
+
 
 if [[ ! -d $outdir ]]; then
   mkdir -p $outdir
@@ -28,5 +32,11 @@ do
     ansfile=$indir/$i.ans
     $checker $file $outfile $ansfile | sed "s/{/{\"seed\":\"$i\",/" >> $result
   fi
+
+  # visualize result
+  # if [[ -f $visualizer ]]; then
+  #   python $visualizer -i $file -o $outfile -a $ansfile -p $outdir/$i.png
+  # fi
 done
+
 cat $result

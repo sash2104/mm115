@@ -14,8 +14,8 @@ set(logger ${root_dir}/scripts/logger.py)
 set(in_dir ${root_dir}/data)
 set(out_dir ${root_dir}/result/${sha})
 set(submit_file ${PROJECT_NAME}.cpp)
-add_custom_target(example-test ${root_dir}/scripts/run.sh ${run} ${in_dir} ${out_dir} ${check})
-add_custom_target(log python ${logger} -i ${root_dir}/src/main.cpp -r ${out_dir}/result.txt -d ${root_dir}/mlruns)
+add_custom_target(example-test ${root_dir}/scripts/run.sh ${run} ${root_dir} ${out_dir} ${check})
+add_custom_target(log python ${logger} -i ${root_dir}/src/main.cpp -od ${out_dir} -mtu ${root_dir}/mlruns)
 add_custom_target(submit cp ${root_dir}/src/main.cpp ${submit_file}
   COMMAND zip submit.zip ${submit_file}
   COMMAND mv submit.zip ${out_dir}

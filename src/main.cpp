@@ -114,11 +114,13 @@ struct Solver {
   int N;
   double C;
   int K, E;
+  int n_given; // はじめに与えられた辺のうち繋がっている辺の数
   edges_t edges;
   graph_t graph;
   vector<vector<int>> vertices; // 繋がっている点同士の集合
-  Timer timer = Timer(3);
+  Timer timer = Timer(4);
   void read() {
+    n_given = 0;
     cin >> N >> C >> K >> E;
     graph.resize(N);
     logger::json("N",N,"C",C,"K",K,"E",E);
@@ -140,11 +142,13 @@ struct Solver {
       }
     }
     for (auto &e: edges) { 
+      if (e.cost > 0) ++n_given;
       int id1 = xy2id(e.from,e.to);
       int id2 = xy2id(e.to,e.from);
       dgold[id1] = e.cost;
       dgold[id2] = e.cost;
     }
+    n_given *= 2;
   }
 
   void solve() { 
@@ -202,14 +206,14 @@ struct Solver {
     for (auto &lv : vertices) {
       bruteforce(lv);
     }
-
     // 貪欲に辺を拡張する
     expand_edges();
   }
 
   void expand_edges() {
     // (a,b)=d1、(b,c)=null、(a,c)=d1+1のときに(b,c)をつなぐ
-    for (int i = 0; i < 5; ++i) {
+    for (int i = 0; i < 10; ++i) {
+      if (timer.get() > 8) break;
       bool expanded = false;
       for (auto &e : edges) {
         if (expanded) break;
@@ -235,13 +239,35 @@ struct Solver {
           if (dpred[id1] == NG || dpred[id2] == NG) continue;
           if (dpred[id1] == INF) swap(id1, id2);
           if (dpred[id1] == e.cost-1 && dpred[id2] == INF) {
+            int v1 = id2x(id2);
+            int v2 = id2y(id2);
+            bool can_expand = true;
+            for (auto &e : graph[v1]) { 
+              if (e.to == v2) continue;
+              int id3 = xy2id(v2, e.to);
+              if (dpred[id3] == NG || dpred[id3] == INF) continue;
+              if (dpred[id3] > e.cost+1) { 
+                can_expand = false;
+                break;
+              }
+            }
+            for (auto &e : graph[v2]) { 
+              if (e.to == v1) continue;
+              int id3 = xy2id(v1, e.to);
+              if (dpred[id3] == NG || dpred[id3] == INF) continue;
+              if (dpred[id3] > e.cost+1) { 
+                can_expand = false;
+                break;
+              }
+            }
+            if (!can_expand) continue;
+            // cerr << e.from << " " << v << " " << e.to << " " << e.cost << " " << dpred[id1] << " " << dpred[id2] << endl;
             dpred[id2] = 1;
             dpred[revid(id2)] = 1;
             matrix[id2] = 1;
             matrix[revid(id2)] = 1;
             done[id2] = true;
             done[revid(id2)] = true;
-            // cerr << e.from << " " << v << " " << e.to << " " << e.cost << " " << dpred[id1] << " " << dpred[id2] << endl;
             expanded = true;
             break;
           }
@@ -280,7 +306,7 @@ struct Solver {
       for (int v2 = 0; v2 < lv.size(); ++v2) {
         if (v == v2) continue;
         int id = xy2id(lv[v], lv[v2]);
-        if (dgold[id] == INF) {
+        if (dgold[id] == INF || dist[v][v2] == INF) {
           continue;
         }
         if (dist[v][v2] < dgold[id]) {
@@ -314,10 +340,11 @@ struct Solver {
     vector<int> best;
     if (lv.size() <= 7) {
       for (int mask = 0; mask < (1<<n); ++mask) { 
-        if (best_dist == 0) {
-          int cnt = __builtin_popcount(mask);
-          if (cnt > best.size()) continue;
-        }
+        // assert(best_dist <= n_given);
+        // if (best_dist == n_given) {
+        //   int cnt = __builtin_popcount(mask);
+        //   if (cnt > best.size()) continue;
+        // }
         vector<int> ids;
         for (int i = 0; i < n; ++i) { 
           if (mask & (1<<i)) {
@@ -337,7 +364,7 @@ struct Solver {
     }
     else { 
       // lv.size() >= 8
-      if (K < 3) return;
+      if (K < 3 && lv.size() < 30) return;
       vector<bool> used(n, false);
       vector<int> best2;
       int cnt = 0;
