@@ -20,7 +20,7 @@ struct Timer {
   static constexpr int64_t CYCLES_PER_SEC = 2800000000;
   const double LIMIT; // FIXME: 時間制限(s)
   int64_t start;
-  Timer() : LIMIT(0.95) { reset(); }
+  Timer() : LIMIT(2.95) { reset(); }
   Timer(double limit) : LIMIT(limit) { reset(); }
   void reset() { start = getCycle(); }
   void plus(double a) { start -= (a * CYCLES_PER_SEC); }
@@ -132,9 +132,10 @@ int matrix[N_MAX*N_MAX]; // (x,y)が繋がっている -> matrix[xy2id(x,y)] = 1
 int dgold[N_MAX*N_MAX]; // matrix[xy2id(x,y)] = (x,y)間の与えられた距離. 情報なしはINF 
 int dpred[N_MAX*N_MAX]; // matrix[xy2id(x,y)] = (x,y)間の推測した距離. 未確定はINF
 bool done[N_MAX*N_MAX]; // done[xy2id(x,y)] = (x,y)間のdpredが確定したならtrue
+int dist[N_MAX][N_MAX];
 
 struct State {
-  int invalid = -10000;
+  int invalid = -1000000;
   int bid, bscore, br, bid2; // backup
   int score;
   vector<int> lv;
@@ -146,18 +147,19 @@ struct State {
   State(const vector<int> &lv, const vector<int> &fixed_ids, const vector<int> &free_ids): 
     lv(lv), fixed_ids(fixed_ids), free_ids(free_ids), V(lv.size()), E(free_ids.size()), used(N_MAX*N_MAX,false), fixed(N_MAX*N_MAX,false) {
     for (int i = 0; i < V; ++i) { rid[lv[i]] = i; }
+    score = calcScore();
   }
 
   int update() {
     int j = rnd.nextInt(10);
-    if (j > 5 && used_ids.size() > 0 && free_ids.size() > 1) {
+    if (j > 6 && used_ids.size() > 0 && free_ids.size() > 1) {
       // 辺の入れ替え
       br = 1;
       int i = rnd.nextInt(used_ids.size());
       int id = used_ids[i];
       int i2 = rnd.nextInt(E);
       int id2 = free_ids[i2];
-      while (fixed[id2] && id2 == id && used[id2]) { 
+      while (fixed[id2] || id2 == id || used[id2]) { 
         i2 = rnd.nextInt(E);
         id2 = free_ids[i2];
       }
@@ -165,11 +167,18 @@ struct State {
     }
     else {
       br = 2;
-      int i = rnd.nextInt(E);
-      int id = free_ids[i];
-      while (fixed[id]) { 
+      int i, id;
+      if (j > 5 && used_ids.size() > 0) {
+        i = rnd.nextInt(used_ids.size());
+        id = used_ids[i];
+      }
+      else {
         i = rnd.nextInt(E);
         id = free_ids[i];
+        while (fixed[id]) { 
+          i = rnd.nextInt(E);
+          id = free_ids[i];
+        }
       }
       return update(id);
     }
@@ -255,7 +264,12 @@ struct State {
       g[v2].push_back(v1);
     }
     // bfs
-    vector<vector<int>> dist(V, vector<int>(V, INF));
+    for (int v = 0; v < V; ++v) {
+      for (int v2 = 0; v2 < V; ++v2) {
+        dist[v][v2] = INF;
+      }
+    }
+
     for (int v = 0; v < V; ++v) {
       dist[v][v] = 0;
       queue<int> q;
@@ -279,24 +293,46 @@ struct State {
     int ret = 0;
     for (int v = 0; v < V; ++v) {
       for (int v2 = 0; v2 < V; ++v2) {
-        if (v == v2) continue;
+        if (v >= v2) continue;
         int id = xy2id(lv[v], lv[v2]);
-        if (dist[v][v2] == INF || dgold[id] == NG) {
-          continue;
-        }
+        // if (dist[v][v2] == INF || dgold[id] == NG) {
+        //   continue;
+        // }
         if (dgold[id] == INF) {
-          if (dist[v][v2] < INF) --ret; // 未確定の部分を確定しない辺を優先したい
+          // ret -= V;
+          // ret -= dist[v][v2];
+          // if (dist[v][v2] < INF) {
+          //   ret -= 1; // 未確定の部分を確定しない辺を優先したい
+          // }
+          // else { 
+          //   ret += 1;
+          // }
           continue;
         }
+        // if (dist[v][v2] < dgold[id]) {
+        //   ret -= 99;
+        // }
+        // if (dist[v][v2] == dgold[id]) {
+        //   ret += 100;
+        // }
+        if (dist[v][v2] == INF) {
+          ret -= dgold[id];
+          continue;
+        }
+        ret -= abs(dgold[id]-dist[v][v2]);
         if (dist[v][v2] < dgold[id]) {
-          // cerr << v << " " << v2 << " " << dist[v][v2] << " " << dgold[id] << endl;
-          return -10000;
+          ret -= abs(dgold[id]-dist[v][v2]);
         }
-        if (dist[v][v2] == dgold[id]) {
-          ret += 100;
-        }
+        // if (dist[v][v2] != dgold[id]) {
+        //   ret -= V;
+        //   // cerr << v << " " << v2 << " " << dist[v][v2] << " " << dgold[id] << endl;
+        //   // return -10000;
+        // }
       }
     }
+    ret -= used_ids.size();
+
+    ret *= 10;
     return ret;
   }
 
@@ -339,8 +375,9 @@ struct State {
 struct SASolver {
   double startTemp = 30;
   double endTemp = 10;
-  Timer timer = Timer(0.95);
+  Timer timer = Timer(4.5);
   State best;
+  vector<int> best_ids;
   SASolver() { init(); }
   SASolver(double st, double et): startTemp(st), endTemp(et) { init(); }
   SASolver(double st, double et, double limit): startTemp(st), endTemp(et), timer(limit) { init(); }
@@ -358,7 +395,7 @@ struct SASolver {
     {
       for (int i = 0; i < 1000; ++i) { // 時間計算を間引く
         int diff = state.update();
-        if (diff == -10000) { // 絶対に更新しない場合
+        if (diff == -1000000) { // 絶対に更新しない場合
           state.revert();
           continue;
         }
@@ -372,8 +409,9 @@ struct SASolver {
           score += diff;
           if (bestScore < score) {
             bestScore = score;
-            best = state;
-            logger::json("tag", "!", "time", t, "counter", counter, "score", score, "e", best.used_ids.size());
+            best_ids = state.used_ids;
+            // best = state;
+            // logger::json("tag", "!", "time", t, "counter", counter, "score", score, "e", best.used_ids.size());
           }
         }
         else { state.revert(); }
@@ -389,11 +427,13 @@ struct Solver {
   double C;
   int K, E;
   int n_given; // はじめに与えられた辺のうち繋がっている辺の数
+  int n_sa; // 焼きなましの必要なかず
   edges_t edges;
   graph_t graph;
   vector<vector<int>> vertices; // 繋がっている点同士の集合
   Timer timer = Timer(5);
   void read() {
+    cerr << timer.get() << endl;
     n_given = 0;
     cin >> N >> C >> K >> E;
     graph.resize(N);
@@ -423,9 +463,12 @@ struct Solver {
       dgold[id2] = e.cost;
     }
     n_given *= 2;
+    cerr << timer.get() << endl;
   }
 
   void solve() { 
+    // cerr << C*N << " " << C << " " << N << endl;
+    // return;
     UnionFind uf(N);
     for (auto &e: edges) { 
       int id1 = xy2id(e.from,e.to);
@@ -477,9 +520,15 @@ struct Solver {
       if (it.second.size() <= 2) continue;
       vertices.emplace_back(it.second);
     }
+    n_sa = 0;
+    for (auto &lv : vertices) {
+      if (lv.size() > 7) ++n_sa;
+    }
+    cerr << timer.get() << endl;
     for (auto &lv : vertices) {
       bruteforce(lv);
     }
+    cerr << timer.get() << endl;
     // 貪欲に辺を拡張する
     // expand_edges();
   }
@@ -655,10 +704,11 @@ struct Solver {
       // cerr << best_dist << " " << best.size() << endl;
     }
     else { 
+      int t = 9/n_sa;
+      SASolver sa(30, 10, t);
       State s(lv, connected_ids, free_ids);
-      SASolver sa;
       sa.solve(s);
-      for (int id : sa.best.used_ids) {
+      for (int id : sa.best_ids) {
         best.push_back(id);
       }
       // lv.size() >= 8

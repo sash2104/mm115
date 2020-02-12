@@ -19,7 +19,7 @@ fi
 result=$3/result.txt
 echo -n > $result
 
-for i in $(seq 1 2)
+for i in $(seq 1 10)
 do
   file=$indir/$i.in
   filebase=$(basename ${file%.*}) # 現状はiと同じになる
@@ -34,9 +34,9 @@ do
   fi
 
   # visualize result
-  if [[ -f $visualizer ]]; then
-    python $visualizer -i $file -o $outfile -a $ansfile -p $outdir/$i.png
-  fi
+  # if [[ -f $visualizer ]]; then
+  #   python $visualizer -i $file -o $outfile -a $ansfile -p $outdir/$i.png
+  # fi
 done
 
 cat $result
