@@ -17,6 +17,7 @@ jobs:
     - name: Run tests
       run: |
         make example-test
+        make submit
 
     - name: Commit files
       run: |

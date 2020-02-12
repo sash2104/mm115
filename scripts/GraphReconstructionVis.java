@@ -216,6 +216,12 @@ public class GraphReconstructionVis {
               }
 
 
+          // System.err.println(N);
+          // for (int i=0; i<N; i++)
+          // {
+          //   for (int k=0; k<N; k++) System.err.print(AdjMat[i][k] ? "1" : "0");
+          //   System.err.println();
+          // }
           if (Debug)
           {
             System.err.println("\nPredicted graph adjacency:");
@@ -329,12 +335,12 @@ public class GraphReconstructionVis {
         if (exec == null) return null;
 
         String s=N+"\n"+C+"\n"+K+"\n"+Paths.size()+"\n";
-        System.err.print(s);
+        // System.err.print(s);
         os.write(s.getBytes());
         for (String a : Paths)
         {
           s=a+"\n";
-          System.err.print(s);
+          // System.err.print(s);
           os.write(s.getBytes());
         }
         os.flush();

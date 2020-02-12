@@ -80,7 +80,7 @@ int main(int argc, char* argv[])
     //compute the F1 score
     double Score = (Precision + Recall < 1e-9 ? 0 : (2 * Precision * Recall)/(Precision + Recall));
 		cout << setprecision(10);
-		logger::json("status", "AC", "score", Score, "TP", TP, "FP", FP, "TN", TN, "FN", FN, "Precision", Precision, "Recall", Recall);
+		logger::json("status", "AC", "score", Score, "TP", TP, "FP", FP, "TN", TN, "FN", FN, "Precision", Precision, "Recall", Recall, "N",N,"C",C,"K",K,"E",NumPaths);
 
 		quitf(_ok, "Correct");
 	}
